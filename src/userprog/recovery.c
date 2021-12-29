@@ -8,13 +8,12 @@
 #include "stdio.h"
 #include "stdlib.h"
 
-#define detection_frequency 100
 #define get_length(arr) (sizeof((arr)) / sizeof(arr[0]))
 struct Graph *graph;
 
 enum Type resource_type = resource;
 enum Type thread_type = thread;
-
+const int NodesNumber; 
 
 static struct thread *choose_victim(list* cycle)
 {   
@@ -42,7 +41,7 @@ static struct thread *choose_victim(list* cycle)
     }
     struct thread *victim ; 
     int rand_num = rand()% 9 ;
-    if(rand_num > 2){
+    if(rand_num > 2 || get_length(high_victims) == 0){
         int rand_victim = rand() % low_count ;
         victim = thread_get_by_id(low_victims[rand_victim]);
     } else{
