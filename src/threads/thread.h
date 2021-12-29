@@ -109,7 +109,13 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+
+    ///////////////////OUR_CHANGE--------------------------------------------------------------------------------
     int victimed_count;
+    ///////////////////OUR_CHANGE--------------------------------------------------------------------------------
+    
+    
+    
     int base_priority;                  /* Base priority of a thread. */ 
     bool donated;                       /* If a thread has donated priority. */
     struct list locks;                  /* List of locks hold by a thread */

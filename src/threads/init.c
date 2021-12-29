@@ -122,6 +122,12 @@ main (void)
   syscall_init ();
 #endif
 
+  ///////////////////OUR_CHANGE----------------------------------------------------------------------
+  init_deadlock_detection();
+  ///////////////////OUR_CHANGE----------------------------------------------------------------------
+
+
+
   /* Start thread scheduler and enable interrupts. */
   thread_start ();
   serial_init_queue ();

@@ -227,7 +227,7 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-  
+
   enum intr_level old_level;
 
   old_level = intr_disable ();
@@ -256,11 +256,13 @@ lock_acquire (struct lock *lock)
           break;        
       }
   }
-  ////// 
-  thread_need_resource(curr->tid , lock->resourceID);
+
+  ///////////////////OUR_CHANGE----------------------------------------------------------------------
+  request_resources(curr->tid , lock->lock_id);
   sema_down (&lock->semaphore);
-  thread_achieves_resource(curr->tid , lock->resourceID);
-  //////
+  receives_resources(curr->tid , lock->lock_id);
+  ///////////////////OUR_CHANGE----------------------------------------------------------------------
+
   lock->holder = curr;
   curr->blocked = NULL;
   
@@ -314,8 +316,9 @@ lock_release (struct lock *lock)
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);
-  thread_releses_resource(curr->tid , lock->resourceID);
-
+  ///////////////////OUR_CHANGE----------------------------------------------------------------------
+  fress_resource(curr->tid , lock->lock_id);
+  ///////////////////OUR_CHANGE----------------------------------------------------------------------
   if (!thread_mlfqs) 
   {
     list_remove (&lock->lock_elem);
