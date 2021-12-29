@@ -92,7 +92,7 @@ static void receives_resources(int tid , int lid){
     delete_edge(graph, tid ,lock_id);
     add_edge(graph , tid , lock_id , thread_type)
 }
-static void fress_resource(int tid , int lock_id){
+static void frees_resource(int tid , int lock_id){
     delete_edge(graph, tid ,lock_id);
 }
 

@@ -12,6 +12,6 @@ static void deadlock_detection_recovery();
 static void init_deadlock_detection();
 static void request_resources(int tid , int lock_id);
 static void receives_resources(int tid , int lock_id);
-static void fress_resource(int tid , int lock_id);
+static void frees_resource(int tid , int lock_id);
 
 

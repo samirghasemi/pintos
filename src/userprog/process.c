@@ -226,6 +226,7 @@ process_wait (tid_t child_tid)
 }
 
 /* Free the current process's resources. */
+///////////////////OUR_CHANGE----------------------------------------------------------------------
 void
 process_exit (struct thread *cur)
 {
