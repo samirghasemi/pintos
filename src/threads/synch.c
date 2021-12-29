@@ -244,8 +244,9 @@ lock_acquire (struct lock *lock)
       {
         thread->donated = true;
         thread_set_priority_extra (thread, curr->priority, false);
-        if (max_lock->lock_priority < curr->priority)
+        if (max_lock->lock_priority < curr->priority){
           max_lock->lock_priority = curr->priority;
+        }
         if (thread->status == THREAD_BLOCKED && thread->blocked != NULL)
           {
             max_lock = thread->blocked;
@@ -254,9 +255,12 @@ lock_acquire (struct lock *lock)
         else
           break;        
       }
-  } 
-
+  }
+  ////// 
+  thread_need_resource(curr->tid , lock->resourceID);
   sema_down (&lock->semaphore);
+  thread_achieves_resource(curr->tid , lock->resourceID);
+  //////
   lock->holder = curr;
   curr->blocked = NULL;
   
@@ -310,6 +314,7 @@ lock_release (struct lock *lock)
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+  thread_releses_resource(curr->tid , lock->resourceID);
 
   if (!thread_mlfqs) 
   {

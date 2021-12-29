@@ -227,9 +227,9 @@ process_wait (tid_t child_tid)
 
 /* Free the current process's resources. */
 void
-process_exit (void)
+process_exit (struct thread *cur)
 {
-  struct thread *cur = thread_current ();
+  // struct thread *cur = thread_current ();
   uint32_t *pd;
     
   printf ("%s: exit(%d)\n", cur->name, cur->ret_status);

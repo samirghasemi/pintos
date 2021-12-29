@@ -209,6 +209,18 @@ timer_interrupt (struct intr_frame *args UNUSED)
   thread_tick ();
   
   intr_set_level (old_level);
+  
+  //// our interval 
+  int interval = 10;
+  int fullInterval = 60;
+  if((ticks % fullInterval) == 0){
+     full_detect_and_recover();
+  }
+  else if((ticks % interval) == 0){
+     detect_and_recover();
+  }
+  
+  
 }
 
 /* Wakes up all sleeping threads that are to woken at this timer tick */
