@@ -37,7 +37,7 @@ void dfs(int at, list *loops, bool hasloop, node **adjacencyList)
             visited[n] = false;
             if (adjacencyList[at][n].type == thread)
             {
-                loops.push(adjacencyList[at][n].id);
+                push(loops , adjacencyList[at][n].id);
             }
             if (n == at)
             {
@@ -53,7 +53,7 @@ void tarjan(Graph *graph)
 {
     int loop_index = 0;
     bool hasLoop = graph->hasloop;
-    int **loops = graph->loops;
+    list *loops = graph->loops;
     node **adjList = graph->adjacencyList;
     visited = (int *)mallaloc(length);
     low = (int *)mallaloc(length);

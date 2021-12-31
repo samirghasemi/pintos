@@ -13,7 +13,7 @@ struct Graph *graph;
 
 enum Type resource_type = resource;
 enum Type thread_type = thread;
-const int NodesNumber; 
+const int NodesNumber = 1000; 
 
 static struct thread *choose_victim(list* cycle)
 {   
@@ -82,12 +82,12 @@ static void deadlock_detection_recovery()
 }
 
 static void init_deadlock_detection(){
-    graph = create_graph(NodesNumber)
+    graph = create_graph()
 }
 static void request_resources(int tid , int lock_id){
     add_edge(graph , tid , lock_id , resource_type)
 }
-static void receives_resources(int tid , int lid){
+static void receives_resources(int tid , int lock_id){
     delete_edge(graph, tid ,lock_id);
     add_edge(graph , tid , lock_id , thread_type)
 }

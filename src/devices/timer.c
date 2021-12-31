@@ -210,20 +210,12 @@ timer_interrupt (struct intr_frame *args UNUSED)
   
   intr_set_level (old_level);
   
-  //// our interval 
-  // int interval = 10;
-
   ///////////////////OUR_CHANGE----------------------------------------------------------------------
   int fullInterval = 100;
   if((ticks % fullInterval) == 0){
      deadlock_detection_recovery();
   }
   ///////////////////OUR_CHANGE----------------------------------------------------------------------
-  
-  // else if((ticks % interval) == 0){
-  //    detect_and_recover();
-  // }
-  
   
 }
 

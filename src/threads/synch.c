@@ -227,17 +227,13 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-
   enum intr_level old_level;
-
   old_level = intr_disable ();
   struct thread *curr, *thread;
   struct lock *max_lock;
-
   curr = thread_current();
   thread = lock->holder;
   curr->blocked = max_lock = lock;
-
   if (!thread_mlfqs) 
   {
     while (thread != NULL && thread->priority < curr->priority) 
@@ -256,13 +252,11 @@ lock_acquire (struct lock *lock)
           break;        
       }
   }
-
   ///////////////////OUR_CHANGE----------------------------------------------------------------------
   request_resources(curr->tid , lock->lock_id);
   sema_down (&lock->semaphore);
   receives_resources(curr->tid , lock->lock_id);
   ///////////////////OUR_CHANGE----------------------------------------------------------------------
-
   lock->holder = curr;
   curr->blocked = NULL;
   
