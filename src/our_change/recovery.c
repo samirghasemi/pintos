@@ -13,7 +13,6 @@ struct Graph *graph;
 
 enum Type resource_type = resource;
 enum Type thread_type = thread;
-const int NodesNumber = 1000; 
 
 static struct thread *choose_victim(list* cycle)
 {   
