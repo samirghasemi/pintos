@@ -15,7 +15,7 @@ static struct lock swap_lock;
 static struct bitmap *swap_map;
 static unsigned swap_size;
 
-/* Initialise swap table. */
+/* Initialise swap table. */ 
 void
 vm_swap_init ()
 {
