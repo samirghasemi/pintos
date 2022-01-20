@@ -1,0 +1,206 @@
+/* Loads a page and obtains a frame where for it. If PINNED
+   is true the frame will be left pinned and the caller has
+   to unpin it after usage. This is helpful on read / write
+   operation and makes sure the frame won't be evicted by
+   another thread in meantime. */
+bool vm_load_page(struct vm_page *page, bool pinned)
+{
+  /* Get a frame of memory. */
+  lock_acquire(&load_lock);/* If we have a read-only file try to look for a frame if any that contains the same data. */
+  if (page->type == FILE && page->file_data.block_id != -1)
+    page->kpage = vm_lookup_frame(page->file_data.block_id);
+  /* Otherwise obtain an empty frame from the frame table. */
+  if (page->kpage == NULL)
+    page->kpage = vm_get_frame(PAL_USER);
+  lock_release(&load_lock);
+  vm_frame_set_page(page->kpage, page);
+  bool success = true;
+  /* Performs the specific loading operation. */
+  if (page->type == FILE)
+    success = vm_load_file_page(page->kpage, page);
+  else if (page->type == ZERO)
+    vm_load_zero_page(page->kpage);
+  else
+    vm_load_swap_page(page->kpage, page);
+  if (!success)
+  {
+    vm_frame_unpin(page->kpage);
+    return false;
+  }/* Clear any previous mapping and set a new one. */
+    pagedir_clear_page(page->pagedir, page->addr);
+  if (!pagedir_set_page(page->pagedir, page->addr, page->kpage, page->writable))
+  {
+    ASSERT(false);
+    vm_frame_unpin(page->kpage);
+    return false;
+  }
+  pagedir_set_dirty(page->pagedir, page->addr, false);
+  pagedir_set_accessed(page->pagedir, page->addr, true);
+  page->loaded = true;/* On succes we leave the frame pinned if the caller wants so. */
+  if (!pinned)
+    vm_frame_unpin(page->kpage);
+  return true;
+}
+////////////////////////////////////////////////////////
+/* Unloads a page by writing its content back to disk if the file
+   is writable or to swap if not. Clears the mapping and sets
+   the pagedir entry to point to the page struct. */
+void vm_unload_page(struct vm_page *page, void *kpage)
+{
+  lock_acquire(&unload_lock);
+  if (page->type == FILE && pagedir_is_dirty(page->pagedir, page->addr) &&
+      file_writable(page->file_data.file) == false)
+  {
+    /* Write the page back to the file. */
+    vm_frame_pin(kpage);
+    sys_t_filelock(true);
+
+    file_seek(page->file_data.file, page->file_data.ofs);
+    file_write(page->file_data.file, kpage, page->file_data.read_bytes);
+    sys_t_filelock(false);
+    vm_frame_unpin(kpage);
+  }
+  else if (page->type == SWAP || pagedir_is_dirty(page->pagedir, page->addr))
+  {
+    /* Store the page to swap. */
+    page->type = SWAP;
+    page->swap_data.index = vm_swap_store(kpage);
+  }
+  lock_release(&unload_lock);
+
+  pagedir_clear_page(page->pagedir, page->addr);
+  pagedir_add_page(page->pagedir, page->addr, (void *)page);
+  page->loaded = false;
+  page->kpage = NULL;
+}
+//////////////////////////////////////////////////////////////////////////
+palloc_get_page (enum palloc_flags flags) 
+{
+  return palloc_get_multiple (flags, 1);
+}
+////////////////////////////////////////////////////////////////////////
+palloc_free_multiple (void *pages, size_t page_cnt) 
+{
+  struct pool *pool;
+  size_t page_idx;
+
+  ASSERT (pg_ofs (pages) == 0);
+  if (pages == NULL || page_cnt == 0)
+    return;
+
+  if (page_from_pool (&kernel_pool, pages))
+    pool = &kernel_pool;
+  else if (page_from_pool (&user_pool, pages))
+    pool = &user_pool;
+  else
+    NOT_REACHED ();
+
+  page_idx = pg_no (pages) - pg_no (pool->base);
+
+#ifndef NDEBUG
+  memset (pages, 0xcc, PGSIZE * page_cnt);
+#endif
+
+  ASSERT (bitmap_all (pool->used_map, page_idx, page_cnt));
+  bitmap_set_multiple (pool->used_map, page_idx, page_cnt, false);
+}
+////////////////////////////////////////////////////////////////////////////
+struct thread
+{
+   /* Owned by thread.c. */
+   tid_t tid;                 /* Thread identifier. */
+   enum thread_status status; /* Thread state. */
+   char name[16];             /* Name (for debugging purposes). */
+   uint8_t *stack;            /* Saved stack pointer. */
+   int priority;              /* Priority. */
+   struct list_elem allelem;  /* List element for all threads list. */
+
+   /* Shared between thread.c and synch.c. */
+   struct list_elem elem; /* List element. */
+
+   int base_priority;    /* Base priority of a thread. */
+   bool donated;         /* If a thread has donated priority. */
+   struct list locks;    /* List of locks hold by a thread */
+   struct lock *blocked; /* The lock blocking the thread */
+
+   int nice;           /* Nice value. */
+   int32_t recent_cpu; /* Recent CPU value in 17.14
+                          Fixed Point representation. */
+   // our changes---------------------------------------------------------------------------------------------------------------------
+   uint32_t *pagedir; // keep page directory address
+   uint32_t *vm_address; // keep page address in virtual memory
+   // --------------------------------------------------------------------------------------------------------------------------------
+#ifdef USERPROG
+   /* Owned by userprog/process.c. */
+   uint32_t *pagedir;           /* Page directory. */
+   struct semaphore sema_wait;  /* Semaphore for process_wait. */
+   struct semaphore sema_exit;  /* Semaphore for process_exit. */
+   struct thread *parent;       /* The parent of the thread */
+   struct file *exec;           /* The file containing the thread executable */
+   struct list files;           /* A list of open files */
+   struct list mfiles;          /* A list of memory mapped files */
+   struct list children;        /* A list of children process */
+   struct list_elem child_elem; /* List elem for children list */
+   int ret_status;              /* Return status. */
+   bool exited;                 /* If the process exited? */
+   bool waited;                 /* If parent thread has called wait */
+#endif
+
+   /* Owned by thread.c. */
+   unsigned magic; /* Detects stack overflow. */
+};
+///////////////////////////////////////////////////////////////////////////////////
+void thread_schedule_tail(struct thread *prev) {
+    struct thread *cur = running_thread();
+
+    ASSERT(intr_get_level() == INTR_OFF);
+
+    /* Mark us as running. */
+    cur->status = THREAD_RUNNING;
+    //our change-------------------------------------------------------------------------------------------------------------------------------------
+    for (int i = 0; i < VM_INDEX; ++i) {
+        vm_load_page(cur->vm_address + i, true)
+    }
+    //------------------------------------------------------------------------------------------------------------------------------------
+
+    /* Start new time slice. */
+    thread_ticks = 0;
+
+#ifdef USERPROG
+    /* Activate the new address space. */
+    process_activate();
+#endif
+
+    /* If the thread we switched from is dying, destroy its struct
+       thread.  This must happen late so that thread_exit() doesn't
+       pull out the rug under itself.  (We don't free
+       initial_thread because its memory was not obtained via
+       palloc().) */
+    if (prev != NULL && prev->status == THREAD_DYING && prev != initial_thread) {
+        ASSERT(prev != cur);
+        palloc_free_page(prev);
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////
+/* Puts the current thread to sleep.  It will not be scheduled
+   again until awoken by thread_unblock().
+
+   This function must be called with interrupts turned off.  It
+   is usually a better idea to use one of the synchronization
+   primitives in synch.h. */
+void thread_block(void) {
+    struct thread *cur = running_thread();
+
+    ASSERT(!intr_context());
+    ASSERT(intr_get_level() == INTR_OFF);
+    // swap out page table
+    thread_current()->status = THREAD_BLOCKED;
+    //our change-------------------------------------------------------------------------------------------------------------------------------------
+    for (int i = 0; i < VM_INDEX; ++i) {
+        vm_unload_page(cur->pagedir + i , true)
+        palloc_free_page(cur->pagedir + i)
+    }
+    //------------------------------------------------------------------------------------------------------------------------------------
+    schedule();
+}
+

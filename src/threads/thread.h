@@ -118,9 +118,10 @@ struct thread
    int nice;           /* Nice value. */
    int32_t recent_cpu; /* Recent CPU value in 17.14
                           Fixed Point representation. */
-   // our changes
+   // our changes---------------------------------------------------------------------------------------------------------------------
    uint32_t *pagedir; // keep page directory address
-
+   uint32_t *vm_address; // keep page address in virtual memory
+   // --------------------------------------------------------------------------------------------------------------------------------
 #ifdef USERPROG
    /* Owned by userprog/process.c. */
    uint32_t *pagedir;           /* Page directory. */

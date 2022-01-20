@@ -103,19 +103,14 @@ void vm_unpin_page(struct vm_page *page)
 bool vm_load_page(struct vm_page *page, bool pinned)
 {
   /* Get a frame of memory. */
-  lock_acquire(&load_lock);
-
-  /* If we have a read-only file try to look for a frame if any
-     that contains the same data. */
+  lock_acquire(&load_lock);/* If we have a read-only file try to look for a frame if any that contains the same data. */
   if (page->type == FILE && page->file_data.block_id != -1)
     page->kpage = vm_lookup_frame(page->file_data.block_id);
   /* Otherwise obtain an empty frame from the frame table. */
   if (page->kpage == NULL)
     page->kpage = vm_get_frame(PAL_USER);
-
   lock_release(&load_lock);
   vm_frame_set_page(page->kpage, page);
-
   bool success = true;
   /* Performs the specific loading operation. */
   if (page->type == FILE)
@@ -124,27 +119,21 @@ bool vm_load_page(struct vm_page *page, bool pinned)
     vm_load_zero_page(page->kpage);
   else
     vm_load_swap_page(page->kpage, page);
-
   if (!success)
   {
     vm_frame_unpin(page->kpage);
     return false;
-  }
-
-  /* Clear any previous mapping and set a new one. */
-  pagedir_clear_page(page->pagedir, page->addr);
+  }/* Clear any previous mapping and set a new one. */
+    pagedir_clear_page(page->pagedir, page->addr);
   if (!pagedir_set_page(page->pagedir, page->addr, page->kpage, page->writable))
   {
     ASSERT(false);
     vm_frame_unpin(page->kpage);
     return false;
   }
-
   pagedir_set_dirty(page->pagedir, page->addr, false);
   pagedir_set_accessed(page->pagedir, page->addr, true);
-
-  page->loaded = true;
-  /* On succes we leave the frame pinned if the caller wants so. */
+  page->loaded = true;/* On succes we leave the frame pinned if the caller wants so. */
   if (!pinned)
     vm_frame_unpin(page->kpage);
   return true;

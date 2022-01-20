@@ -40,9 +40,6 @@ vm_swap_load (size_t index, void *addr)
       ASSERT ( bitmap_test (swap_map, index) );
 
       block_read (swap_block, index, addr + ofs * BLOCK_SECTOR_SIZE);
-      ++index;
-    }
-
   lock_release (&swap_lock); 
 }
 
